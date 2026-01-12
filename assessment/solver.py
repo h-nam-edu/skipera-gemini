@@ -1,7 +1,5 @@
 import time
-
 import requests
-
 from assessment.types import QUESTION_TYPE_MAP, MODEL_MAP, deep_blank_model, WHITELISTED_QUESTION_TYPES
 from config import GRAPHQL_URL
 from assessment.queries import (GET_STATE_QUERY, SAVE_RESPONSES_QUERY, SUBMIT_DRAFT_QUERY,
@@ -22,42 +20,59 @@ class GradedSolver(object):
     def solve(self):
         state = self.get_state()
 
-        if state["allowedAction"] == "RESUME_DRAFT":
-            logger.error("An attempt is already in progress, please abort it manually.")
+        # 1. Safety Check for Audit/Locked items
+        if state is None:
+            logger.warning(f"Skipping assessment {self.item_id}: State unavailable (Locked/Audit).")
+            return
 
-        elif state["allowedAction"] == "START_NEW_ATTEMPT":
-            if state["outcome"] is not None:
-                if state["outcome"]["isPassed"]:
-                    logger.debug("Already passed!")
-                    return
+        # 2. Check if we passed already
+        if state.get("outcome") and state["outcome"].get("isPassed"):
+            logger.debug("Already passed!")
+            return
 
+        # 3. If we need to start a new attempt, do it now
+        if state["allowedAction"] == "START_NEW_ATTEMPT":
             if state["attempts"]["attemptsRemaining"] == 0:
                 logger.error("No more attempts can be made!")
+                return
 
+            logger.debug("Starting new attempt...")
+            if not self.initiate_attempt():
+                logger.error("Could not start an attempt. Please file an issue.")
+                return
+            
+            # We successfully started, so now we are effectively in "RESUME_DRAFT" mode
+            state["allowedAction"] = "RESUME_DRAFT"
+
+        # 4. If we have an active draft (existing or just started), SOLVE IT.
+        if state["allowedAction"] == "RESUME_DRAFT":
+            logger.info("Solving assessment...")
+            
+            questions = self.retrieve_questions()
+            
+            # Initialize Connector
+            connector = PerplexityConnector()
+            answers = connector.get_response(questions)
+
+            # Safety check if AI failed
+            if not answers or "responses" not in answers:
+                logger.error("Skipping: AI failed to provide valid answers.")
+                return
+
+            if not self.save_responses(answers["responses"]):
+                logger.error("Could not save responses.")
             else:
-                if not self.initiate_attempt():
-                    logger.error("Could not start an attempt. Please file an issue.")
-
+                if not self.submit_draft():
+                    logger.error("Could not submit the assignment.")
                 else:
-                    questions = self.retrieve_questions()
-                    connector = PerplexityConnector()
-                    answers = connector.get_response(questions)
-
-                    if not self.save_responses(answers["responses"]):
-                        logger.error("Could not save responses. Please file an issue.")
-
-                    else:
-                        if not self.submit_draft():
-                            logger.error("Could not submit the assignment. Please file an issue.")
-
-                        else:
-                            logger.debug("Waiting 3 seconds for grading..")
-                            time.sleep(3)  # delay for grading process
-                            if not self.get_grade():
-                                logger.error("Sorry! Could not pass the assignment, maybe use a better model.")
-
+                    logger.debug("Waiting 3 seconds for grading..")
+                    time.sleep(3)
+                    if not self.get_grade():
+                        logger.warning("Assignment submitted but did not pass. (Check model accuracy)")
+        
         else:
-            logger.error("Something went wrong! Please file an issue.")
+            # Fallback for unknown states
+            logger.error(f"Unknown state action: {state['allowedAction']}")
 
     def get_state(self) -> dict:
         """
@@ -74,7 +89,10 @@ class GradedSolver(object):
             "query": GET_STATE_QUERY
         }).json()
 
-        return res["data"]["SubmissionState"]["queryState"]
+        try:
+            return res["data"]["SubmissionState"]["queryState"]
+        except (KeyError, TypeError):
+            return None
 
     def initiate_attempt(self) -> bool:
         """
@@ -127,11 +145,11 @@ class GradedSolver(object):
                     "value": option["display"]["cmlValue"]
                 })
 
-            questions_formatted[question["partId"]] = {"Question": question["questionSchema"]["prompt"]["cmlValue"],
-                                                       "Options": options,
-                                                       "Type": "Single-Choice" if
-                                                       question["__typename"] == "Submission_MultipleChoiceQuestion"
-                                                       else "Multi-Choice"}
+            questions_formatted[question["partId"]] = {
+                "Question": question["questionSchema"]["prompt"]["cmlValue"],
+                "Options": options,
+                "Type": "Single-Choice" if question["__typename"] == "Submission_MultipleChoiceQuestion" else "Multi-Choice"
+            }
         return questions_formatted
 
     def save_responses(self, answers: dict) -> bool:
@@ -170,7 +188,10 @@ class GradedSolver(object):
             return True
 
         logger.debug([*answer_responses, *self.discarded_questions])
-        logger.debug(res.json())
+        try:
+            logger.debug(res.json())
+        except:
+            pass
         return False
 
     def submit_draft(self) -> bool:
@@ -210,8 +231,19 @@ class GradedSolver(object):
             }
         }).json()
 
-        outcome = res["data"]["SubmissionState"]["queryState"]["outcome"]
+        try:
+            # Safely access the nested data
+            query_state = res.get("data", {}).get("SubmissionState", {}).get("queryState", {})
+            outcome = query_state.get("outcome")
 
-        logger.debug(f"Achieved {outcome['earnedGrade']} grade. Passed? {outcome['isPassed']}")
+            # Check if outcome is None before reading it
+            if outcome is None:
+                logger.warning("Grading not finished yet (outcome is None). Assuming not passed.")
+                return False
 
-        return outcome['isPassed']
+            logger.debug(f"Achieved {outcome.get('earnedGrade', 'Unknown')} grade. Passed? {outcome.get('isPassed', False)}")
+            return outcome.get('isPassed', False)
+
+        except Exception as e:
+            logger.error(f"Failed to read grade: {e}")
+            return False

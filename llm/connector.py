@@ -1,21 +1,7 @@
-# https://github.com/serv0id/skipera
 import json
 import requests
-from config import PERPLEXITY_API_URL, PERPLEXITY_API_KEY, PERPLEXITY_MODEL
-from pydantic import BaseModel
-from typing import List, Literal
 from loguru import logger
-
-
-class ResponseFormat(BaseModel):
-    question_id: str
-    option_id: List[str]
-    type: Literal["Single", "Multi"]
-
-
-class ResponseList(BaseModel):
-    responses: List[ResponseFormat]
-
+from config import PERPLEXITY_API_URL, PERPLEXITY_API_KEY, PERPLEXITY_MODEL
 
 class PerplexityConnector(object):
     def __init__(self):
@@ -24,28 +10,66 @@ class PerplexityConnector(object):
 
     def get_response(self, questions: dict) -> dict:
         """
-        Sends the questions to Perplexity and asks for the answers
-        in a JSON format.
+        Sends the questions to the API and retrieves answers.
         """
-        logger.debug("Making an API Request to Perplexity..")
-        response = requests.post(url=self.API_URL, headers={
-            "Authorization": f"Bearer {self.API_KEY}"
-        }, json={
+        logger.debug(f"Making an API Request to {PERPLEXITY_MODEL}...")
+
+        # We define the schema strictly in the prompt instead of the API parameters
+        # to avoid compatibility issues with the Gemini OpenAI endpoint.
+        system_prompt = (
+            "You are an expert exam solver. You must answer the following questions.\n"
+            "CRITICAL INSTRUCTION: You must output ONLY valid, raw JSON. Do not use Markdown code blocks.\n"
+            "The output structure must be exactly like this:\n"
+            "{\n"
+            "  \"responses\": [\n"
+            "    {\n"
+            "      \"question_id\": \"<id>\",\n"
+            "      \"option_id\": [\"<correct_option_id>\"],\n"
+            "      \"type\": \"Single\" or \"Multi\"\n"
+            "    }\n"
+            "  ]\n"
+            "}\n"
+            "Ignore HTML tags in the question text. Be precise."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        # We use "response_format": {"type": "json_object"} which is widely supported
+        # and safer than passing the full Pydantic schema.
+        payload = {
             "model": PERPLEXITY_MODEL,
             "messages": [
-                {"role": "system", "content": "Answer the provided many questions."
-                                              "Be precise and concise. The questions are in a dict format"
-                                              "with the key representing the question id and the value a"
-                                              "JSON dict containing several things."
-                                              "Questions may have single-choice or multiple-choice answers,"
-                                              "which would be specified by the user in the JSON data."
-                                              "The question/option values might have HTML data but ignore that."},
-                {"role": "user", "content": json.dumps(questions)},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(questions)}
             ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"schema": ResponseList.model_json_schema()}
-            }
-        }).json()
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1
+        }
 
-        return json.loads(response["choices"][0]["message"]["content"])
+        try:
+            response = requests.post(url=self.API_URL, headers=headers, json=payload).json()
+
+            # --- ERROR HANDLING ---
+            if "error" in response:
+                logger.error(f"API Error: {response['error'].get('message', response['error'])}")
+                return {}
+            
+            if "choices" not in response:
+                logger.error(f"Unexpected response format: {response}")
+                return {}
+            # ----------------------
+
+            content = response["choices"][0]["message"]["content"]
+
+            # Clean up Markdown if the model ignores the "No Markdown" rule
+            if content.strip().startswith("```"):
+                content = content.replace("```json", "").replace("```", "")
+
+            return json.loads(content.strip())
+
+        except Exception as e:
+            logger.error(f"Connector Exception: {e}")
+            return {}
