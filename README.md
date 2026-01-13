@@ -60,7 +60,3 @@ To automatically solve graded assignments using the Gemini API, add the `--llm` 
 python3 main.py --llm --slug introduction-psychology
 
 ```
-
----
-
-Would you like me to add a "Troubleshooting" section or a list of available CLI flags?
