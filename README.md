@@ -39,7 +39,7 @@ PERPLEXITY_API_KEY = "YOUR_API_HERE"
 5. Save and close the file.
 
 ## 🛠 Usage
-### Make sure that you have already enrolled in the course, otherwise the script won't work.
+### ⚠️⚠️⚠️Make sure that you have already enrolled in the course, otherwise the script won't work.⚠️⚠️⚠️
 
 To run the script, you need the **course slug**. This is the part of the Coursera URL immediately following `/learn/`.
 
@@ -61,3 +61,4 @@ To automatically solve graded assignments using the Gemini API, add the `--llm` 
 python3 main.py --llm --slug introduction-psychology
 
 ```
+With the accuracy being at 50%!!! Which is exactly half of the world population, so that is saying something...
