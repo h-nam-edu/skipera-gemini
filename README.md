@@ -32,7 +32,7 @@ cookies = { "CAUTH": "PASTE_YOUR_COPIED_VALUE_HERE" }
 
 4. **Optional:** Add your **Gemini API Key** in the designated field within `config.py` if you intend to use AI features for assignments.
 ```python
-PERPLEXITY_API_KEY = "Your_API_Here"
+PERPLEXITY_API_KEY = "YOUR_API_HERE"
 
 ```
 5. Save and close the file.
