@@ -1,4 +1,5 @@
-# https://github.com/serv0id/skipera
+# https://github.com/h-nam-edu/skipera-gemini
+# fork of https://github.com/serv0id/skipera
 
 BASE_URL = "https://www.coursera.org/api/"
 GRAPHQL_URL = "https://www.coursera.org/graphql-gateway"
@@ -13,7 +14,7 @@ HEADERS = {
     'x-requested-with': 'XMLHttpRequest',
 }
 
-COOKIES = {"CAUTH": "Your Cookies Here"}
+COOKIES = {"CAUTH": "PASTE_YOUR_COPIED_VALUE_HERE"}
 
 # Credentials
-PERPLEXITY_API_KEY = "Your API here"
+PERPLEXITY_API_KEY = "Your_API_Here"
