@@ -9,8 +9,6 @@ pip install -r requirements.txt
 
 ```
 
----
-
 ## 🔑 Setup Guide
 
 ### Step 1: Get Your Coursera Cookie
@@ -35,8 +33,6 @@ cookies = { "CAUTH": "PASTE_YOUR_COPIED_VALUE_HERE" }
 
 4. **Optional:** Add your **Gemini API Key** in the designated field within `config.py` if you intend to use AI features for assignments.
 5. Save and close the file.
-
----
 
 ## 🛠 Usage
 
