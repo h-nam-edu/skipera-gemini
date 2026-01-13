@@ -39,6 +39,7 @@ PERPLEXITY_API_KEY = "YOUR_API_HERE"
 5. Save and close the file.
 
 ## 🛠 Usage
+### Make sure that you have already enrolled in the course, otherwise the script won't work.
 
 To run the script, you need the **course slug**. This is the part of the Coursera URL immediately following `/learn/`.
 
