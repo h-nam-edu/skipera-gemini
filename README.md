@@ -1,4 +1,5 @@
 # Skipera
+Tool to skip Coursera courses, forked from https://github.com/serv0id/skipera, but uses Gemini instead of Perplexity for auto-solving tests.
 
 ## 🚀 Installation
 
