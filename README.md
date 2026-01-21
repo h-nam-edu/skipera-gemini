@@ -61,9 +61,8 @@ To automatically solve graded assignments using the Gemini API, add the `--llm` 
 python3 main.py --slug introduction-psychology --llm
 
 ```
-with an accuracy of 50%!! Which is exactly half the world population, so that is saying something....
 
-Also, you can use the `--ungraded` flag to do ungraded assignments. For some courses that require you to complete the entire module to take the final assignment.
+Also, you can use the `--ungraded` flag to do ungraded assignments. For some courses that require you to complete the entire module first to take the final assignment.
 
 ```bash
 python3 main.py --slug introduction-psychology --llm --ungraded
