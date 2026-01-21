@@ -8,7 +8,8 @@ from watcher.watch import Watcher
 
 
 class Skipera(object):
-    def __init__(self, course: str, llm: bool):
+    # Update init to accept the new 'ungraded' argument
+    def __init__(self, course: str, llm: bool, ungraded: bool):
         self.user_id = None
         self.course_id = None
         self.base_url = config.BASE_URL
@@ -17,6 +18,7 @@ class Skipera(object):
         self.session.cookies.update(config.COOKIES)
         self.course = course
         self.llm = llm
+        self.ungraded = ungraded  # Store the flag
         if not self.get_userid():
             self.login()
 
@@ -66,7 +68,12 @@ class Skipera(object):
             elif item["contentSummary"]["typeName"] == "supplement":
                 self.read_item(item["id"])
             elif item["contentSummary"]["typeName"] == "ungradedAssignment":
-                logger.info("Skipping ungraded assignment!")
+                if self.ungraded and self.llm:
+                    logger.info("Attempting to solve ungraded assignment...")
+                    solver = GradedSolver(self.session, self.course_id, item["id"])
+                    solver.solve()
+                else:
+                    logger.info("Skipping ungraded assignment!")
             elif item["contentSummary"]["typeName"] == "staffGraded" and self.llm:
                 logger.info("Attempting to solve graded assessment..")
                 solver = GradedSolver(self.session, self.course_id, item["id"])
@@ -99,8 +106,9 @@ class Skipera(object):
 @click.command()
 @click.option('--slug', required=True, help="The course slug from the URL")
 @click.option('--llm', is_flag=True, help="Whether to use an LLM to solve graded assignments.")
-def main(slug: str, llm: bool) -> None:
-    skipera = Skipera(slug, llm)
+@click.option('--ungraded', is_flag=True, help="Whether to attempt ungraded assignments.") # New Flag
+def main(slug: str, llm: bool, ungraded: bool) -> None:
+    skipera = Skipera(slug, llm, ungraded)
     skipera.get_course()
 
 
