@@ -49,7 +49,7 @@ To run the script, you need the **course slug**. This is the part of the Courser
 ### Standard Run
 
 ```bash
-python3 main.py --slug introduction-psychology
+python main.py --slug introduction-psychology
 
 ```
 
@@ -58,13 +58,13 @@ python3 main.py --slug introduction-psychology
 To automatically solve graded assignments using the Gemini API, add the `--llm` flag:
 
 ```bash
-python3 main.py --slug introduction-psychology --llm
+python main.py --slug introduction-psychology --llm
 
 ```
 
 Also, you can use the `--ungraded` flag to do ungraded assignments. For some courses that require you to complete the entire module first to take the final assignment.
 
 ```bash
-python3 main.py --slug introduction-psychology --llm --ungraded
+python main.py --slug introduction-psychology --llm --ungraded
 
 ```
