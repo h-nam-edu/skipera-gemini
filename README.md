@@ -70,4 +70,5 @@ python main.py --slug introduction-psychology --llm --ungraded
 ```
 
 And keep re-running it till the AI gets everything right. ¯\_(ツ)_/¯
+
 Tips: press "Up" (the up arrow button) to re-run the line you just ran in terminal.
